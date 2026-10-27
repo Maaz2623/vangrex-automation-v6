@@ -9,8 +9,7 @@ const delay = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
 // Change this to any desktop task.
-const task =
-  "Check if Tailwind CSS IntelliSense is installed. Install it if it is not installed.";
+const task = "Scroll to the last theme in color themes list.";
 
 const MAX_STEPS = 10;
 const MAX_REPEATED_ACTIONS = 2;
@@ -32,6 +31,12 @@ const resultSchema = z.object({
   typeAction: z.object({
     isRequired: z.boolean(),
     text: z.string(),
+  }),
+
+  scrollAction: z.object({
+    isRequired: z.boolean(),
+    x: z.number(),
+    y: z.number(),
   }),
 });
 
@@ -86,21 +91,37 @@ ${formatted}
 
 Determine the next necessary step.
 
-Consider the previous actions and current UI state.
+Consider the previous actions and the current UI state.
+
 Do not repeat an action that has already succeeded.
 If the task is complete, return status "completed".
 If the available UI does not establish the necessary information,
 return status "unknown".
 If progress is impossible, return status "blocked".
+
 Use the shortest possible path by understanding the current UI.
-For typing don't enable click is required because we focus it in the program ourselves.
+
+IMPORTANT:
+- Choose only one action per iteration.
+- You may click, type, scroll, or request no action.
+- The program focuses the target element before typing.
+- For typing, do not request an additional click just to focus
+  the same input.
+- For scrolling, specify the UI element whose area should scroll.
+- After every action, the UI will be inspected again.
+- Do not assume an action succeeded without checking the UI.
+- If an action did not change the UI, determine a different
+  appropriate action when possible.
+- If the requested task is already complete, do not perform
+  additional actions.
 `,
 
       instructions: `
 You are a general-purpose desktop automation agent.
 
-Your job is to complete the user's requested task using the current
-desktop UI tree and the available click and typing actions.
+Your job is to complete the user's requested task using the
+current desktop UI tree and the available click, typing,
+and scrolling actions.
 
 You must distinguish between:
 - Inspecting information.
@@ -111,73 +132,121 @@ You must distinguish between:
 GENERAL RULES:
 
 1. Follow the user's task exactly.
-2. Do not hardcode a particular application, extension, theme, or workflow.
+2. Do not hardcode a particular application, extension, theme,
+   or workflow.
 3. Inspect the current UI tree before selecting an action.
 4. Return a concise user-facing message on every iteration.
 5. Perform only the next necessary action.
 6. After each action, inspect the updated UI tree.
-7. Use previous actions and the current UI state to determine progress.
+7. Use previous actions and the current UI state to determine
+   progress.
 8. Do not repeat successful actions unnecessarily.
 9. Never invent a UI element that is absent from the UI tree.
 10. Use exact role and name values from the UI tree.
 11. Use PascalCase roles where applicable.
 12. Do not include keyboard shortcuts in element names.
 13. Do not claim success until there is evidence of completion.
-14. If the task requires no action, return both action flags as false.
-15. If information cannot be determined, explain why instead of guessing.
+14. If no action is needed, set all action flags to false.
+15. If information cannot be determined, explain why instead
+    of guessing.
 16. Never perform actions unrelated to the user's task.
+17. Choose the action that makes the most progress toward
+    the user's goal.
+18. Do not scroll when the required information or target is
+    already visible.
+19. Do not click an element merely to inspect information
+    that is already visible.
+20. After scrolling, inspect the updated UI before deciding
+    what to do next.
+21. Prefer small, purposeful steps over unnecessary navigation.
+22. Use the action history to avoid repeating unsuccessful actions.
+23. Never report that a click, typing action, or scroll succeeded
+    until the updated UI provides evidence.
 
 ACTION SCHEMA:
 
-Your output has two independent action flags:
+You have three independent action flags:
 
-clickAction.isRequired
-typeAction.isRequired
+- clickAction.isRequired
+- typeAction.isRequired
+- scrollAction.isRequired
 
-Exactly one flag must be true when an action is needed.
+When an action is needed, exactly ONE of these flags must be true.
 
-When no action is needed, both must be false.
+When no action is needed, all three flags must be false.
 
 CLICKING:
 
 When the next necessary action is a click:
 - Set clickAction.isRequired = true.
 - Set typeAction.isRequired = false.
-- Return the exact target role and name.
+- Set scrollAction.isRequired = false.
+- Return the exact target role and name from the UI tree.
 - Set typeAction.text to an empty string.
+- Set scrollAction.x = 0 and scrollAction.y = 0.
 
 TYPING:
 
 When the next necessary action is typing:
 - Set clickAction.isRequired = false.
 - Set typeAction.isRequired = true.
-- Return the exact input role and name.
+- Set scrollAction.isRequired = false.
+- Return the exact input role and name from the UI tree.
 - Return the exact text in typeAction.text.
+- Set scrollAction.x = 0 and scrollAction.y = 0.
 
-If the input must first be focused, click it in one iteration
-and inspect the updated UI before deciding whether to type.
+The program focuses the target element before typing.
+Therefore, you do not need to request a separate click solely
+to focus the same input.
+
+Only request typing when the target element is a suitable
+input or text-entry control.
+
+SCROLLING:
+
+When the next necessary action is scrolling:
+- Set clickAction.isRequired = false.
+- Set typeAction.isRequired = false.
+- Set scrollAction.isRequired = true.
+- Return the exact target role and name from the UI tree.
+- Set scrollAction.x to the horizontal scroll amount.
+- Set scrollAction.y to the vertical scroll amount.
+- Use 0 for an axis that does not need to scroll.
+- Positive y scrolls down; negative y scrolls up.
+- Positive x scrolls right; negative x scrolls left.
+- Choose a reasonable scroll amount for the current UI.
+- Scroll the relevant panel, list, menu, or content area.
+- Do not scroll an unrelated part of the desktop.
+- Do not scroll if the target information is already visible.
+- After scrolling, inspect the updated UI.
+- Do not repeatedly scroll in the same direction without
+  checking whether the previous scroll changed the UI.
+- If a scroll does not help, choose a different valid action
+  or return blocked if no valid path remains.
 
 NO ACTION:
 
 When the task is complete:
 - Set status = "completed".
-- Set both action flags to false.
-- Set role, name, and typeAction.text to empty strings.
+- Set all three action flags to false.
+- Set role and name to empty strings.
+- Set typeAction.text to an empty string.
+- Set scrollAction.x and scrollAction.y to 0.
 - Explain the result in message.
 
 When the task cannot be determined:
 - Set status = "unknown".
-- Set both action flags to false.
+- Set all three action flags to false.
 - Explain what evidence is missing.
 
 When the task cannot proceed:
 - Set status = "blocked".
-- Set both action flags to false.
+- Set all three action flags to false.
 - Explain the obstacle.
 
 TASK PROGRESS:
 
-For tasks that require several actions:
+For tasks requiring several actions:
 1. Identify the current state.
 2. Determine the next missing step.
 3. Execute only that step.
@@ -187,26 +256,39 @@ For tasks that require several actions:
 
 Do not keep reopening a view that is already open.
 Do not repeatedly click an input when it is already available.
-Do not repeat an action merely because the desired final state has
-not yet been reached.
+Do not repeat an action merely because the desired final state
+has not yet been reached.
 
-If the same action has failed to produce progress, choose a different
-valid next step if one exists. Otherwise return status "blocked".
+If the same action has failed to produce progress, choose a
+different valid next step if one exists. Otherwise return blocked.
 
 For extension installation tasks:
 - First determine whether the requested extension is installed.
 - If installed, report completion without reinstalling it.
-- If not installed, navigate to the extension search only as needed.
+- If not installed, navigate to extension search only as needed.
 - Search for the requested extension.
-- Identify the correct extension from the visible results.
+- Identify the correct extension from visible results.
 - Click its Install button only if it is not already installed.
-- Inspect the updated UI to verify the installation.
+- Inspect the updated UI to verify installation.
 - Do not claim installation succeeded based only on clicking Install.
 
+For settings and theme tasks:
+- Inspect the currently visible settings and theme options.
+- Use the UI tree to identify relevant menus, lists, and controls.
+- Scroll a relevant list when necessary to reveal additional options.
+- Distinguish between available options and the currently selected option.
+- Select the requested setting only when it is identifiable.
+- Verify the resulting selection using the updated UI.
+- Do not invent theme names or claim a theme is selected without evidence.
+
 For informational tasks:
-- Answer from the supplied UI tree.
-- Do not interact with the desktop unless interaction is genuinely
-  necessary and explicitly appropriate for the user's task.
+- Answer from the supplied UI tree whenever possible.
+- If relevant information is hidden in a scrollable panel,
+  scroll that panel and inspect the updated UI.
+- Do not interact with the desktop unless interaction is
+  genuinely necessary for the user's task.
+- Do not claim to know options or settings that are not
+  established by the available UI evidence.
 
 MESSAGE RULES:
 
@@ -220,6 +302,7 @@ For an unknown or blocked task, explain the limitation.
 Do not describe an action as successful before inspecting its result.
 
 OUTPUT:
+
 - message: User-facing progress or final message.
 - status: in_progress, completed, unknown, or blocked.
 - intent: Short description of the next step.
@@ -228,6 +311,9 @@ OUTPUT:
 - clickAction.isRequired: Whether a click is required.
 - typeAction.isRequired: Whether typing is required.
 - typeAction.text: Exact text to enter, or empty if not typing.
+- scrollAction.isRequired: Whether scrolling is required.
+- scrollAction.x: Horizontal scroll amount.
+- scrollAction.y: Vertical scroll amount.
 `,
 
       output: Output.object({
@@ -251,6 +337,9 @@ OUTPUT:
       click: output.clickAction.isRequired,
       type: output.typeAction.isRequired,
       text: output.typeAction.text,
+      scroll: output.scrollAction.isRequired,
+      scrollX: output.scrollAction.x,
+      scrollY: output.scrollAction.y,
     });
 
     console.log("Input tokens:", result.usage.inputTokens);
@@ -264,24 +353,34 @@ OUTPUT:
     // 5. Validate the action flags.
     const shouldClick = output.clickAction.isRequired;
     const shouldType = output.typeAction.isRequired;
+    const shouldScroll = output.scrollAction.isRequired;
 
-    if (shouldClick && shouldType) {
-      console.error(
-        "Invalid model output: click and type cannot both be required.",
-      );
+    const requestedActions = [shouldClick, shouldType, shouldScroll].filter(
+      Boolean,
+    ).length;
+
+    if (requestedActions > 1) {
+      console.error("Invalid model output: only one action flag can be true.");
       break;
     }
 
-    if (!shouldClick && !shouldType) {
+    if (requestedActions === 0) {
       console.log(
         "No action requested. Stopping to avoid an unnecessary loop.",
       );
       break;
     }
 
-    if (!output.role.trim() || !output.name.trim()) {
-      console.error("The model requested an action without a valid target.");
-      break;
+    if (shouldScroll) {
+      if (output.scrollAction.x === 0 && output.scrollAction.y === 0) {
+        console.error("Invalid scroll action: both scroll amounts are zero.");
+        break;
+      }
+    } else {
+      if (!output.role.trim() || !output.name.trim()) {
+        console.error("The model requested an action without a valid target.");
+        break;
+      }
     }
 
     if (shouldType && !output.typeAction.text.length) {
@@ -289,16 +388,19 @@ OUTPUT:
       break;
     }
 
-    // 6. Detect repeated actions.
-    const actionType = shouldClick ? "click" : "type";
+    // 6. Determine the requested action.
+    const actionType = shouldClick ? "click" : shouldType ? "type" : "scroll";
 
     const actionKey = JSON.stringify({
       action: actionType,
       role: output.role,
       name: output.name,
       text: shouldType ? output.typeAction.text : "",
+      scrollX: shouldScroll ? output.scrollAction.x : 0,
+      scrollY: shouldScroll ? output.scrollAction.y : 0,
     });
 
+    // Prevent the same action from being executed repeatedly.
     if (actionKey === previousActionKey) {
       repeatedActionCount++;
     } else {
@@ -309,26 +411,29 @@ OUTPUT:
     if (repeatedActionCount >= MAX_REPEATED_ACTIONS) {
       console.error("\nStopping: the same action was requested repeatedly.");
 
+      console.error("Action:", actionType);
       console.error("Target:", output.role, output.name);
 
-      console.error("The action loop was stopped to prevent repeated clicks.");
+      console.error("The action loop was stopped to prevent repeated actions.");
 
       break;
     }
 
     // 7. Find the requested UI element.
+    // Click, type, and scroll all require a valid UI target.
     const selector = `role:${output.role} && text:${output.name}`;
 
     const app = await desktop.getCurrentApplication();
-
     const element = await app.locator(selector).first(3000);
 
     // Record the action before executing it.
     actionHistory.push({
       action: actionType,
-      target: `${output.role}: ${output.name}${
-        shouldType ? ` [${output.typeAction.text}]` : ""
-      }`,
+      target: shouldScroll
+        ? `${output.role}: ${output.name} [x=${output.scrollAction.x}, y=${output.scrollAction.y}]`
+        : `${output.role}: ${output.name}${
+            shouldType ? ` [${output.typeAction.text}]` : ""
+          }`,
     });
 
     // 8. Execute exactly one action.
@@ -341,17 +446,33 @@ OUTPUT:
       robot.moveMouseSmooth(targetX, targetY);
       robot.mouseClick();
 
-      console.log("\nExecuted click:", output.name);
+      console.log("\nExecuted click:", output.role, output.name);
     } else if (shouldType) {
-      // Terminator's Element.typeText handles typing into the element.
-      // Do not issue an additional click here: the model should request
-      // a separate click first if the input needs to be focused.
+      // Focus the element before typing.
+      await element.focus();
       await element.typeText(output.typeAction.text);
 
       console.log("\nExecuted typing:", output.typeAction.text);
+    } else if (shouldScroll) {
+      const { x, y, width, height } = element.bounds();
+
+      const targetX = Math.round(x + width / 2);
+      const targetY = Math.round(y + height / 2);
+
+      // Move the mouse over the target scrollable area.
+      robot.moveMouseSmooth(targetX, targetY);
+
+      // Scroll the targeted area.
+      robot.scrollMouse(output.scrollAction.x, output.scrollAction.y);
+
+      console.log("\nExecuted scroll:", {
+        target: `${output.role}: ${output.name}`,
+        x: output.scrollAction.x,
+        y: output.scrollAction.y,
+      });
     }
 
-    // Allow the UI to update before the next inspection.
+    // 9. Allow the UI to update before the next inspection.
     await delay(1000);
   } catch (error) {
     console.error(
