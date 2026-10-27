@@ -1,3 +1,6 @@
 import robot from "robotjs";
+import { desktop } from "./src/desktop";
 
-robot.scrollMouse(0, -20);
+await desktop.pressKey(`{Ctrl}d`);
+await desktop.pressKey(`{Win}`);
+await desktop.pressKey(`{Ctrl}{Shift}{Escape}`);

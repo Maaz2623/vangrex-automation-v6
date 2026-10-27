@@ -10,18 +10,15 @@ const delay = (ms: number): Promise<void> =>
 
 // Change this to any desktop task.
 const task =
-  "Do i have monokai pro theme and one dark pro theme in my theme list. Don't check extensions.";
+  "HOver over file explorer tree and create a new folder called testing. and inside it create an index.html file. In it create a beautiful landing page for a real estate business. Just use css.";
 
 const MAX_STEPS = 10;
 const MAX_REPEATED_ACTIONS = 2;
 
 const resultSchema = z.object({
   message: z.string(),
-
   status: z.enum(["in_progress", "completed", "unknown", "blocked"]),
-
   intent: z.string(),
-
   role: z.string(),
   name: z.string(),
 
@@ -33,12 +30,24 @@ const resultSchema = z.object({
     isRequired: z.boolean(),
     text: z.string(),
     clearBeforeTyping: z.boolean(),
+    pressEnterAfterTyping: z.boolean(),
   }),
 
   scrollAction: z.object({
     isRequired: z.boolean(),
     x: z.number(),
     y: z.number(),
+  }),
+
+  hoverAction: z.object({
+    isRequired: z.boolean(),
+    x: z.number(),
+    y: z.number(),
+  }),
+
+  pressKeyAction: z.object({
+    isRequired: z.boolean(),
+    combination: z.string(),
   }),
 });
 
@@ -104,12 +113,16 @@ If progress is impossible, return status "blocked".
 Use the shortest possible path by understanding the current UI.
 
 IMPORTANT:
-- Choose only one action per iteration.
-- You may click, type, scroll, or request no action.
+- Choose only ONE action per iteration.
+- Available actions: click, type, scroll, hover, press keys, or no action.
 - The program focuses the target element before typing.
 - For typing, do not request an additional click just to focus
   the same input.
 - For scrolling, specify the UI element whose area should scroll.
+- For hovering, specify the UI element to hover over.
+- For keyboard shortcuts, provide the exact combination using
+  the supported format, such as {Ctrl}d, {Win}, or {Ctrl}{Shift}{Escape}.
+- Do not use keyboard shortcuts when a direct UI action is more appropriate.
 - After every action, the UI will be inspected again.
 - Do not assume an action succeeded without checking the UI.
 - If an action did not change the UI, determine a different
@@ -123,17 +136,14 @@ You are a general-purpose desktop automation agent.
 
 Your job is to complete the user's requested task using the
 current desktop UI tree and the available click, typing,
-and scrolling actions.
-
-You must distinguish between:
-- Inspecting information.
-- Performing an action.
-- Verifying progress.
-- Completing the task.
+scrolling, hovering, and keyboard actions.
 
 GENERAL RULES:
 
-IF YOU HAVE TO RETURN ANY ACTION. ALWAYS RETURN THE ELEMENT ROLE AND NAME BECAUSE IT IS REQUIRED TO PERFORM ACTION.
+IF YOU RETURN A UI ACTION, ALWAYS RETURN THE ELEMENT ROLE AND NAME
+BECAUSE THEY ARE REQUIRED TO LOCATE THE ELEMENT.
+
+Keyboard actions do not require a UI element target.
 
 1. Follow the user's task exactly.
 2. Do not hardcode a particular application, extension, theme,
@@ -142,129 +152,120 @@ IF YOU HAVE TO RETURN ANY ACTION. ALWAYS RETURN THE ELEMENT ROLE AND NAME BECAUS
 4. Return a concise user-facing message on every iteration.
 5. Perform only the next necessary action.
 6. After each action, inspect the updated UI tree.
-7. Use previous actions and the current UI state to determine
-   progress.
+7. Use previous actions and the current UI state to determine progress.
 8. Do not repeat successful actions unnecessarily.
 9. Never invent a UI element that is absent from the UI tree.
 10. Use exact role and name values from the UI tree.
 11. Use PascalCase roles where applicable.
 12. Do not include keyboard shortcuts in element names.
 13. Do not claim success until there is evidence of completion.
-14. If no action is needed, set all action flags to false.
-15. If information cannot be determined, explain why instead
-    of guessing.
+14. If no action is needed, set every action flag to false.
+15. If information cannot be determined, explain why instead of guessing.
 16. Never perform actions unrelated to the user's task.
-17. Choose the action that makes the most progress toward
-    the user's goal.
-18. Do not scroll when the required information or target is
-    already visible.
-19. Do not click an element merely to inspect information
-    that is already visible.
-20. After scrolling, inspect the updated UI before deciding
-    what to do next.
+17. Choose the action that makes the most progress toward the user's goal.
+18. Do not scroll when the required information or target is already visible.
+19. Do not click an element merely to inspect information already visible.
+20. After scrolling, inspect the updated UI before deciding what to do next.
 21. Prefer small, purposeful steps over unnecessary navigation.
 22. Use the action history to avoid repeating unsuccessful actions.
-23. Never report that a click, typing action, or scroll succeeded
-    until the updated UI provides evidence.
+23. Never report an action as successful until the updated UI provides evidence.
 
 ACTION SCHEMA:
 
-You have three independent action flags:
-
+You have five independent action flags:
 - clickAction.isRequired
 - typeAction.isRequired
 - scrollAction.isRequired
+- hoverAction.isRequired
+- pressKeyAction.isRequired
 
 When an action is needed, exactly ONE of these flags must be true.
-
-When no action is needed, all three flags must be false.
+When no action is needed, all five flags must be false.
 
 CLICKING:
-
-When the next necessary action is a click:
 - Set clickAction.isRequired = true.
-- Set typeAction.isRequired = false.
-- Set scrollAction.isRequired = false.
+- Set all other action flags to false.
 - Return the exact target role and name from the UI tree.
 - Set typeAction.text to an empty string.
-- Set scrollAction.x = 0 and scrollAction.y = 0.
+- Set scrollAction.x and scrollAction.y to 0.
+- Set pressKeyAction.combination to an empty string.
 
 TYPING:
-
-When the next necessary action is typing:
-- Set clickAction.isRequired = false.
 - Set typeAction.isRequired = true.
-- Set scrollAction.isRequired = false.
+- Set all other action flags to false.
 - Return the exact input role and name from the UI tree.
 - Return the exact text in typeAction.text.
-- Set scrollAction.x = 0 and scrollAction.y = 0.
+- Set typeAction.clearBeforeTyping according to whether existing text
+  should be replaced.
+- Set scrollAction.x and scrollAction.y to 0.
+- Set pressKeyAction.combination to an empty string.
 
-The program focuses the target element before typing.
-Therefore, you do not need to request a separate click solely
-to focus the same input.
+HOVERING:
+- Set hoverAction.isRequired = true.
+- Set all other action flags to false.
+- Return the exact target role and name from the UI tree.
+- Set hoverAction.x and hoverAction.y to 0.
+- The program uses the center of the target element's bounds.
+- Do not click merely to reveal hover-only controls.
+- After hovering, inspect the updated UI tree.
 
-Only request typing when the target element is a suitable
-input or text-entry control.
 SCROLLING:
-
-When the next necessary action is scrolling:
-
-- Set clickAction.isRequired = false.
-- Set typeAction.isRequired = false.
 - Set scrollAction.isRequired = true.
+- Set all other action flags to false.
 - Return the exact target role and name from the UI tree.
 - Set scrollAction.x to the horizontal scroll amount.
 - Set scrollAction.y to the vertical scroll amount.
 - Use 0 for an axis that does not need to scroll.
 
-SCROLL DIRECTION CONVENTIONS:
-
-The scroll direction follows these sign conventions:
-
-Vertical scrolling (Y):
+SCROLL DIRECTION:
 - Negative y values scroll DOWN.
 - Positive y values scroll UP.
-- y = 0 means no vertical scrolling.
-
-Horizontal scrolling (X):
 - Negative x values scroll LEFT.
 - Positive x values scroll RIGHT.
-- x = 0 means no horizontal scrolling.
+- Use 0 for an axis that does not need to scroll.
 
 Examples:
 - Scroll down: x = 0, y = -300.
 - Scroll up: x = 0, y = 300.
 - Scroll right: x = 300, y = 0.
 - Scroll left: x = -300, y = 0.
-- Scroll diagonally down and right: x = 300, y = -300.
 
-ACTION GUIDELINES:
+PRESSING KEYS:
 
-- Choose a reasonable scroll amount based on the visible content.
-- Scroll the relevant panel, list, menu, or content area.
-- Do not scroll an unrelated part of the desktop.
-- Do not scroll if the required information is already visible.
-- After scrolling, inspect the updated UI before deciding what to do next.
-- Do not repeatedly scroll in the same direction without checking whether the previous scroll changed the UI.
-- If scrolling does not help, choose a different valid action or return status "blocked" if no valid path remains.
+When a keyboard key or combination is the next necessary action:
+- Set pressKeyAction.isRequired = true.
+- Set all other action flags to false.
+- Return the exact keyboard combination in pressKeyAction.combination.
+- Do not require a role or name for keyboard actions.
+- Do not use a separate click action merely to focus the application
+  before sending a shortcut when the current focus is already appropriate.
+- Use the supported key syntax:
+  - {Ctrl}d
+  - {Win}
+  - {Ctrl}{Shift}{Escape}
+- Use keyboard shortcuts only when appropriate for the user's task.
+- After pressing keys, inspect the updated UI before deciding what to do next.
+- Set pressKeyAction.combination to an empty string when not pressing keys.
+
 NO ACTION:
 
 When the task is complete:
 - Set status = "completed".
-- Set all three action flags to false.
+- Set all action flags to false.
 - Set role and name to empty strings.
 - Set typeAction.text to an empty string.
 - Set scrollAction.x and scrollAction.y to 0.
+- Set pressKeyAction.combination to an empty string.
 - Explain the result in message.
 
 When the task cannot be determined:
 - Set status = "unknown".
-- Set all three action flags to false.
+- Set all action flags to false.
 - Explain what evidence is missing.
 
 When the task cannot proceed:
 - Set status = "blocked".
-- Set all three action flags to false.
+- Set all action flags to false.
 - Explain the obstacle.
 
 TASK PROGRESS:
@@ -277,66 +278,37 @@ For tasks requiring several actions:
 5. Verify whether the step succeeded.
 6. Continue with the next missing step.
 
-Do not keep reopening a view that is already open.
-Do not repeatedly click an input when it is already available.
 Do not repeat an action merely because the desired final state
 has not yet been reached.
-
-If the same action has failed to produce progress, choose a
-different valid next step if one exists. Otherwise return blocked.
-
-For extension installation tasks:
-- First determine whether the requested extension is installed.
-- If installed, report completion without reinstalling it.
-- If not installed, navigate to extension search only as needed.
-- Search for the requested extension.
-- Identify the correct extension from visible results.
-- Click its Install button only if it is not already installed.
-- Inspect the updated UI to verify installation.
-- Do not claim installation succeeded based only on clicking Install.
-
-For settings and theme tasks:
-- Inspect the currently visible settings and theme options.
-- Use the UI tree to identify relevant menus, lists, and controls.
-- Scroll a relevant list when necessary to reveal additional options.
-- Distinguish between available options and the currently selected option.
-- Select the requested setting only when it is identifiable.
-- Verify the resulting selection using the updated UI.
-- Do not invent theme names or claim a theme is selected without evidence.
-
-For informational tasks:
-- Answer from the supplied UI tree whenever possible.
-- If relevant information is hidden in a scrollable panel,
-  scroll that panel and inspect the updated UI.
-- Do not interact with the desktop unless interaction is
-  genuinely necessary for the user's task.
-- Do not claim to know options or settings that are not
-  established by the available UI evidence.
 
 MESSAGE RULES:
 
 Every response must include a short user-facing message.
-
 For an action, describe the next step.
 For an informational task, report the available information.
 For a completed task, summarize the result.
 For an unknown or blocked task, explain the limitation.
-
 Do not describe an action as successful before inspecting its result.
 
 OUTPUT:
-
 - message: User-facing progress or final message.
 - status: in_progress, completed, unknown, or blocked.
 - intent: Short description of the next step.
-- role: Exact target role, or empty if no action is needed.
-- name: Exact target name, or empty if no action is needed.
+- role: Exact target role, or empty if no UI target is needed.
+- name: Exact target name, or empty if no UI target is needed.
 - clickAction.isRequired: Whether a click is required.
 - typeAction.isRequired: Whether typing is required.
 - typeAction.text: Exact text to enter, or empty if not typing.
+- typeAction.clearBeforeTyping: Whether to clear existing text first.
 - scrollAction.isRequired: Whether scrolling is required.
 - scrollAction.x: Horizontal scroll amount.
 - scrollAction.y: Vertical scroll amount.
+- hoverAction.isRequired: Whether hovering is required.
+- hoverAction.x: Set to 0; element bounds determine the hover position.
+- hoverAction.y: Set to 0; element bounds determine the hover position.
+- pressKeyAction.isRequired: Whether a keyboard action is required.
+- pressKeyAction.combination: Exact supported key combination, or empty
+  when no keyboard action is required.
 `,
 
       output: Output.object({
@@ -360,9 +332,12 @@ OUTPUT:
       click: output.clickAction.isRequired,
       type: output.typeAction.isRequired,
       text: output.typeAction.text,
+      clearBeforeTyping: output.typeAction.clearBeforeTyping,
       scroll: output.scrollAction.isRequired,
       scrollX: output.scrollAction.x,
       scrollY: output.scrollAction.y,
+      hover: output.hoverAction,
+      pressKey: output.pressKeyAction,
     });
 
     console.log("Input tokens:", result.usage.inputTokens);
@@ -373,14 +348,20 @@ OUTPUT:
       break;
     }
 
-    // 5. Validate the action flags.
+    // 5. Validate action flags.
     const shouldClick = output.clickAction.isRequired;
     const shouldType = output.typeAction.isRequired;
     const shouldScroll = output.scrollAction.isRequired;
+    const shouldHover = output.hoverAction.isRequired;
+    const shouldPressKey = output.pressKeyAction.isRequired;
 
-    const requestedActions = [shouldClick, shouldType, shouldScroll].filter(
-      Boolean,
-    ).length;
+    const requestedActions = [
+      shouldClick,
+      shouldType,
+      shouldScroll,
+      shouldHover,
+      shouldPressKey,
+    ].filter(Boolean).length;
 
     if (requestedActions > 1) {
       console.error("Invalid model output: only one action flag can be true.");
@@ -388,9 +369,7 @@ OUTPUT:
     }
 
     if (requestedActions === 0) {
-      console.log(
-        "No action requested. Stopping to avoid an unnecessary loop.",
-      );
+      console.log("No action requested while task is in progress. Stopping.");
       break;
     }
 
@@ -399,11 +378,12 @@ OUTPUT:
         console.error("Invalid scroll action: both scroll amounts are zero.");
         break;
       }
-    } else {
-      if (!output.role.trim() || !output.name.trim()) {
-        console.error("The model requested an action without a valid target.");
-        break;
-      }
+    }
+
+    // Keyboard actions do not require a UI element.
+    if (!shouldPressKey && (!output.role.trim() || !output.name.trim())) {
+      console.error("The model requested a UI action without a valid target.");
+      break;
     }
 
     if (shouldType && !output.typeAction.text.length) {
@@ -411,16 +391,30 @@ OUTPUT:
       break;
     }
 
-    // 6. Determine the requested action.
-    const actionType = shouldClick ? "click" : shouldType ? "type" : "scroll";
+    if (shouldPressKey && !output.pressKeyAction.combination.trim()) {
+      console.error("The model requested a key press without a combination.");
+      break;
+    }
+
+    // 6. Determine the requested action, including keyboard input.
+    const actionType = shouldClick
+      ? "click"
+      : shouldType
+        ? "type"
+        : shouldScroll
+          ? "scroll"
+          : shouldHover
+            ? "hover"
+            : "pressKey";
 
     const actionKey = JSON.stringify({
       action: actionType,
-      role: output.role,
-      name: output.name,
+      role: shouldPressKey ? "" : output.role,
+      name: shouldPressKey ? "" : output.name,
       text: shouldType ? output.typeAction.text : "",
       scrollX: shouldScroll ? output.scrollAction.x : 0,
       scrollY: shouldScroll ? output.scrollAction.y : 0,
+      combination: shouldPressKey ? output.pressKeyAction.combination : "",
     });
 
     // Prevent the same action from being executed repeatedly.
@@ -433,72 +427,106 @@ OUTPUT:
 
     if (repeatedActionCount >= MAX_REPEATED_ACTIONS) {
       console.error("\nStopping: the same action was requested repeatedly.");
-
       console.error("Action:", actionType);
-      console.error("Target:", output.role, output.name);
-
+      console.error(
+        "Target:",
+        shouldPressKey
+          ? output.pressKeyAction.combination
+          : `${output.role}: ${output.name}`,
+      );
       console.error("The action loop was stopped to prevent repeated actions.");
-
       break;
     }
 
-    // 7. Find the requested UI element.
-    // Click, type, and scroll all require a valid UI target.
-    const selector = `role:${output.role} && text:${output.name}`;
-
-    const app = await desktop.getCurrentApplication();
-    const element = await app.locator(selector).first(3000);
-
-    // Record the action before executing it.
-    actionHistory.push({
-      action: actionType,
-      target: shouldScroll
+    // 7. Record the action.
+    const actionTarget = shouldPressKey
+      ? output.pressKeyAction.combination
+      : shouldScroll
         ? `${output.role}: ${output.name} [x=${output.scrollAction.x}, y=${output.scrollAction.y}]`
         : `${output.role}: ${output.name}${
             shouldType ? ` [${output.typeAction.text}]` : ""
-          }`,
+          }`;
+
+    actionHistory.push({
+      action: actionType,
+      target: actionTarget,
     });
 
     // 8. Execute exactly one action.
-    if (shouldClick) {
-      const { x, y, width, height } = element.bounds();
+    if (shouldPressKey) {
+      const combination = output.pressKeyAction.combination;
 
-      const targetX = Math.round(x + width / 2);
-      const targetY = Math.round(y + height / 2);
+      console.log("\nPressing keys:", combination);
 
-      robot.moveMouseSmooth(targetX, targetY);
-      robot.mouseClick();
+      await desktop.pressKey(combination);
 
-      console.log("\nExecuted click:", output.role, output.name);
-    } else if (shouldType) {
-      // Focus the element before typing.
-      await element.focus();
-      await element.typeText(output.typeAction.text, {
-        clearBeforeTyping: result.output.typeAction.clearBeforeTyping,
-      });
+      console.log("Executed keyboard action:", combination);
+    } else {
+      // Find the requested UI element for mouse/typing/scroll actions.
+      const selector = `role:${output.role} && text:${output.name}`;
+      const app = await desktop.getCurrentApplication();
+      const element = await app.locator(selector).first(3000);
 
-      console.log("\nExecuted typing:", output.typeAction.text);
-    } else if (shouldScroll) {
-      const { x, y, width, height } = element.bounds();
+      if (shouldHover) {
+        const { x, y, width, height } = element.bounds();
 
-      const targetX = Math.round(x + width / 2);
-      const targetY = Math.round(y + height / 2);
+        const targetX = Math.round(x + width / 2);
+        const targetY = Math.round(y + height / 2);
 
-      // Move the mouse over the target scrollable area.
-      robot.moveMouseSmooth(targetX, targetY);
+        console.log("\nHover target:", {
+          role: output.role,
+          name: output.name,
+          bounds: { x, y, width, height },
+          mouseTarget: { x: targetX, y: targetY },
+        });
 
-      // Scroll the targeted area.
-      robot.scrollMouse(output.scrollAction.x, output.scrollAction.y);
+        robot.moveMouseSmooth(targetX, targetY);
 
-      console.log("\nExecuted scroll:", {
-        target: `${output.role}: ${output.name}`,
-        x: output.scrollAction.x,
-        y: output.scrollAction.y,
-      });
+        await delay(1000);
+
+        console.log("Executed hover:", output.role, output.name);
+      } else if (shouldClick) {
+        const { x, y, width, height } = element.bounds();
+
+        const targetX = Math.round(x + width / 2);
+        const targetY = Math.round(y + height / 2);
+
+        robot.moveMouseSmooth(targetX, targetY);
+        robot.mouseClick();
+
+        console.log("Executed click:", output.role, output.name);
+      } else if (shouldType) {
+        await element.focus();
+
+        await element.typeText(output.typeAction.text, {
+          clearBeforeTyping: output.typeAction.clearBeforeTyping,
+        });
+
+        if (output.typeAction.pressEnterAfterTyping) {
+          await element.pressKey(`{Enter}`);
+        }
+
+        console.log("Executed typing:", output.typeAction.text);
+      } else if (shouldScroll) {
+        const { x, y, width, height } = element.bounds();
+
+        const targetX = Math.round(x + width / 2);
+        const targetY = Math.round(y + height / 2);
+
+        robot.moveMouseSmooth(targetX, targetY);
+
+        robot.scrollMouse(output.scrollAction.x, output.scrollAction.y);
+
+        console.log("Executed scroll:", {
+          target: `${output.role}: ${output.name}`,
+          x: output.scrollAction.x,
+          y: output.scrollAction.y,
+        });
+      }
     }
 
     // 9. Allow the UI to update before the next inspection.
-    await delay(3000);
+    await delay(1500);
   } catch (error) {
     console.error(
       "\nDesktop task failed:",
