@@ -9,7 +9,8 @@ const delay = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
 // Change this to any desktop task.
-const task = "Scroll to the last theme in color themes list.";
+const task =
+  "Do i have monokai pro theme and one dark pro theme in my theme list. Don't check extensions.";
 
 const MAX_STEPS = 10;
 const MAX_REPEATED_ACTIONS = 2;
@@ -31,6 +32,7 @@ const resultSchema = z.object({
   typeAction: z.object({
     isRequired: z.boolean(),
     text: z.string(),
+    clearBeforeTyping: z.boolean(),
   }),
 
   scrollAction: z.object({
@@ -131,6 +133,8 @@ You must distinguish between:
 
 GENERAL RULES:
 
+IF YOU HAVE TO RETURN ANY ACTION. ALWAYS RETURN THE ELEMENT ROLE AND NAME BECAUSE IT IS REQUIRED TO PERFORM ACTION.
+
 1. Follow the user's task exactly.
 2. Do not hardcode a particular application, extension, theme,
    or workflow.
@@ -201,10 +205,10 @@ to focus the same input.
 
 Only request typing when the target element is a suitable
 input or text-entry control.
-
 SCROLLING:
 
 When the next necessary action is scrolling:
+
 - Set clickAction.isRequired = false.
 - Set typeAction.isRequired = false.
 - Set scrollAction.isRequired = true.
@@ -212,18 +216,37 @@ When the next necessary action is scrolling:
 - Set scrollAction.x to the horizontal scroll amount.
 - Set scrollAction.y to the vertical scroll amount.
 - Use 0 for an axis that does not need to scroll.
-- Positive y scrolls down; negative y scrolls up.
-- Positive x scrolls right; negative x scrolls left.
-- Choose a reasonable scroll amount for the current UI.
+
+SCROLL DIRECTION CONVENTIONS:
+
+The scroll direction follows these sign conventions:
+
+Vertical scrolling (Y):
+- Negative y values scroll DOWN.
+- Positive y values scroll UP.
+- y = 0 means no vertical scrolling.
+
+Horizontal scrolling (X):
+- Negative x values scroll LEFT.
+- Positive x values scroll RIGHT.
+- x = 0 means no horizontal scrolling.
+
+Examples:
+- Scroll down: x = 0, y = -300.
+- Scroll up: x = 0, y = 300.
+- Scroll right: x = 300, y = 0.
+- Scroll left: x = -300, y = 0.
+- Scroll diagonally down and right: x = 300, y = -300.
+
+ACTION GUIDELINES:
+
+- Choose a reasonable scroll amount based on the visible content.
 - Scroll the relevant panel, list, menu, or content area.
 - Do not scroll an unrelated part of the desktop.
-- Do not scroll if the target information is already visible.
-- After scrolling, inspect the updated UI.
-- Do not repeatedly scroll in the same direction without
-  checking whether the previous scroll changed the UI.
-- If a scroll does not help, choose a different valid action
-  or return blocked if no valid path remains.
-
+- Do not scroll if the required information is already visible.
+- After scrolling, inspect the updated UI before deciding what to do next.
+- Do not repeatedly scroll in the same direction without checking whether the previous scroll changed the UI.
+- If scrolling does not help, choose a different valid action or return status "blocked" if no valid path remains.
 NO ACTION:
 
 When the task is complete:
@@ -450,7 +473,9 @@ OUTPUT:
     } else if (shouldType) {
       // Focus the element before typing.
       await element.focus();
-      await element.typeText(output.typeAction.text);
+      await element.typeText(output.typeAction.text, {
+        clearBeforeTyping: result.output.typeAction.clearBeforeTyping,
+      });
 
       console.log("\nExecuted typing:", output.typeAction.text);
     } else if (shouldScroll) {
@@ -473,7 +498,7 @@ OUTPUT:
     }
 
     // 9. Allow the UI to update before the next inspection.
-    await delay(1000);
+    await delay(3000);
   } catch (error) {
     console.error(
       "\nDesktop task failed:",
