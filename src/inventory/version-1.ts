@@ -1,16 +1,15 @@
 import { generateText, Output } from "ai";
 import * as Terminator from "@mediar-ai/terminator";
-import { geminiModel } from "./src/model";
 import z from "zod";
 import robot from "robotjs";
-import { desktop } from "./src/desktop";
+import { desktop } from "../desktop";
+import { geminiModel } from "../model";
 
 const delay = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
 // Change this to any desktop task.
-const task =
-  "HOver over file explorer tree and create a new folder called testing. and inside it create an index.html file. In it create a beautiful landing page for a real estate business. Just use css.";
+const task = "Change theme to light. Don't use shortcuts";
 
 const MAX_STEPS = 10;
 const MAX_REPEATED_ACTIONS = 2;
@@ -62,7 +61,7 @@ let previousActionKey = "";
 let repeatedActionCount = 0;
 
 for (let step = 1; step <= MAX_STEPS; step++) {
-  await delay(1500);
+  await delay(3000);
 
   console.log(`\n--- Step ${step}/${MAX_STEPS} ---`);
   console.log("Task:", task);
@@ -103,6 +102,9 @@ ${formatted}
 Determine the next necessary step.
 
 Consider the previous actions and the current UI state.
+
+
+WHATEVER THE ACTION, ALWAYS SELECT AND RETURN THE ROLE AND NAME OF THE ELEMENT.
 
 Do not repeat an action that has already succeeded.
 If the task is complete, return status "completed".
@@ -233,6 +235,7 @@ Examples:
 PRESSING KEYS:
 
 When a keyboard key or combination is the next necessary action:
+- Use shortcuts only when the task cannot be completed with ui elements. Otherwise strictly don't.
 - Set pressKeyAction.isRequired = true.
 - Set all other action flags to false.
 - Return the exact keyboard combination in pressKeyAction.combination.

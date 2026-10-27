@@ -1,0 +1,204 @@
+- [Window] test.ts - vangrex-automation-v6 - Visual Studio Code (focused)
+  - [Pane] test.ts - vangrex-automation-v6 - Visual Studio Code
+    - [Pane]
+      - [Pane]
+        - [Pane]
+        - [Pane]
+          - [Pane]
+            - [Pane]
+              - [Pane]
+                  - [Group]
+                    - [Pane]
+                      - [Group]
+                      - [Group]
+                      - [Group]
+                      - [MenuBar]
+                      - [ToolBar]
+                      - [ToolBar] Title actions
+                          - [Text] 
+                          - [Text] 
+                          - [Text] 
+                      - [Group]
+                      - [Group]
+                      - [Group]
+                      - [Tab] Active View Switcher
+                          - [Group] Explorer (Ctrl+Shift+E)
+                          - [Group] Search (Ctrl+Shift+F)
+                          - [Group] Source Control (Ctrl+Shift+G) - 4 pending changes
+                          - [Group] Source Control (Ctrl+Shift+G) - 4 pending changes
+                          - [Group] Run and Debug (Ctrl+Shift+D)
+                          - [Group] Extensions (Ctrl+Shift+X)
+                          - [Group] Vercel
+                          - [Group] Vercel Deployment
+                          - [Group] Python
+                      - [ToolBar] Manage
+                          - [Group] Accounts - Sign in to Sync Settings
+                          - [Group] Accounts - Sign in to Sync Settings
+                            - [Text] 1
+                          - [Group] Manage
+                            - [Text] 
+                      - [Text] Explorer
+                      - [ToolBar] Explorer actions
+                        - [Group]
+                          - [Group]
+                      - [ToolBar]
+                      - [Group]
+                      - [Group]
+                        - [Text] Explorer Section: vangrex-automation-v6
+                          - [Group] D:\projects\vangrex-automation-v6\node_modules
+                          - [Group] D:\projects\vangrex-automation-v6\src • Contains emphasized items
+                          - [Group] D:\projects\vangrex-automation-v6\src\agents
+                          - [Group] D:\projects\vangrex-automation-v6\src\agents\vangrex.agent.ts
+                          - [Group] D:\projects\vangrex-automation-v6\src\agents\vscode.agent.ts
+                          - [Group] D:\projects\vangrex-automation-v6\src\desktop.ts
+                          - [Group] D:\projects\vangrex-automation-v6\src\filter-tree.ts • Untracked
+                          - [Group] D:\projects\vangrex-automation-v6\src\index.ts
+                          - [Group] D:\projects\vangrex-automation-v6\src\model.ts
+                          - [Group] D:\projects\vangrex-automation-v6\testing
+                          - [Group] D:\projects\vangrex-automation-v6\testing\index.html
+                          - [Group] D:\projects\vangrex-automation-v6\.env
+                          - [Group] D:\projects\vangrex-automation-v6\.gitignore
+                          - [Group] D:\projects\vangrex-automation-v6\bun.lock
+                          - [Group] D:\projects\vangrex-automation-v6\dumb.ts
+                          - [Group] D:\projects\vangrex-automation-v6\package.json
+                          - [Group] D:\projects\vangrex-automation-v6\README.md
+                          - [Group] D:\projects\vangrex-automation-v6\temp.ts • Modified
+                          - [Group] D:\projects\vangrex-automation-v6\test.ts • Modified
+                          - [Group] D:\projects\vangrex-automation-v6\tree.txt • Untracked
+                          - [Group] D:\projects\vangrex-automation-v6\tsconfig.json
+                        - [Text] Outline
+                        - [Text] Timeline
+                      - [Group]
+                      - [Group]
+                        - [Group]
+                          - [Tab]
+                              - [Group] D:\projects\vangrex-automation-v6\test.ts • Modified
+                              - [ToolBar] Tab actions
+                              - [Group] D:\projects\vangrex-automation-v6\temp.ts • Modified
+                              - [ToolBar] Tab actions
+                          - [ToolBar] Editor actions
+                            - [Group]
+                              - [Group]
+                                  - [Text] 
+                              - [Group] D:\projects\vangrex-automation-v6\test.ts • Modified
+                                - [Text]
+                                - [Text] test.ts
+                              - [Text] 
+                              - [Text] 
+                              - [Group] result (variable)
+                                - [Text] result
+                              - [Text] 
+                              - [Text] 
+                              - [Group] instructions (property)
+                                - [Text] instructions
+                        - [Group] test.ts
+                          - [Text]
+                            - [Group]
+                              - [Text] 92
+                              - [Text] 
+                              - [Text] 95
+                              - [Text] 
+                              - [List]
+                      - [Tab] Active View Switcher
+                          - [Group] Problems (Ctrl+Shift+M)
+                          - [Group] Output (Ctrl+Shift+U)
+                          - [Group] Debug Console (Ctrl+Shift+Y)
+                          - [Group] Terminal (Ctrl+`)
+                          - [Group] Ports
+                      - [ToolBar] Terminal actions
+                          - [Button] New Terminal (Ctrl+Shift+`) [Alt] Split Terminal (Ctrl+Shift+5)
+                        - [Group]
+                          - [Group]
+                        - [Group]
+                          - [Group]
+                      - [ToolBar]
+                          - [Text] 
+                      - [Group]
+                        - [Group]
+                          - [Image]
+                          - [Group]
+                            - [Image]
+                            - [Image]
+                        - [Group]
+                        - [Group]
+                          - [Group]
+                            - [Image]
+                            - [Image]
+                        - [Group] remote
+                        - [Group] vangrex-automation-v6 (Git) - main*, Checkout Branch/Tag...
+                        - [Group] vangrex-automation-v6 (Git) - Synchronize Changes
+                        - [Group] No Problems
+                        - [Group] Notifications
+                        - [Group] check Prettier
+                        - [Group] Inline suggestions disabled
+                        - [Group] TypeScript
+                        - [Group] Editor Language Status: tsconfig.json, next: 6.0.0-dev.20260416, TypeScript version, next: Prettier, next: $(copilot) No inline suggestion available, Inline suggestions
+                        - [Group] CRLF
+                        - [Group] UTF-8
+                        - [Group] Spaces: 2
+                        - [Group] Ln 107, Col 76
+                      - [Text]
+                      - [Text]
+                        - [Text] options: ((LanguageModelCallOptions & (RequestOptions<ToolSet> & Prompt)) & { tools?: ToolSet | undefined; }) & { ...; } & { ...; }, , Generate a text and call tools for a given prompt using a language model. This function does not stream the output. If you want to stream the output, use `streamText` instead. *@returns* — A result object that contains the generated text, the results of the tool calls, and additional information., hint
+                      - [Group]
+                        - [Text] Cursor added: line 149 column 51
+                      - [Group]
+                        - [Group]
+                          - [Text] 33 Results
+                        - [ToolBar]
+                        - [Group]
+                              - [Group]
+                                - [Group]
+                                - [Group]
+                              - [ToolBar]
+                              - [Group]
+                                - [Group]
+                                - [Group]
+                              - [ToolBar]
+                              - [Group]
+                                - [Group]
+                                - [Group]
+                              - [ToolBar]
+                              - [Group]
+                                - [Group]
+                                  - [Group]
+                                - [Group] Control+Alt+UpArrow
+                              - [ToolBar]
+                              - [Group]
+                                - [Group]
+                                - [Group] Control+Alt+DownArrow
+                              - [ToolBar]
+                              - [Group]
+                                - [Group]
+                                  - [Group]
+                                - [Group]
+                              - [ToolBar]
+                              - [Group]
+                                - [Group]
+                                - [Group] Shift+Alt+I
+                              - [ToolBar]
+                              - [Group]
+                                - [Group]
+                                - [Group] Control+Shift+`
+                              - [ToolBar]
+                              - [Group]
+                                - [Group]
+                                - [Group]
+                              - [ToolBar]
+                              - [Group]
+                                - [Group]
+                                - [Group]
+                              - [ToolBar]
+                              - [Group]
+                                - [Group]
+                                - [Group]
+                              - [ToolBar]
+                              - [Group]
+                                - [Group]
+                                - [Group]
+                              - [ToolBar]
+                              - [Group]
+                                - [Group]
+                                - [Group]
+                              - [ToolBar]
+              - [Pane]
