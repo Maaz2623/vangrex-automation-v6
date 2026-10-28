@@ -571,4 +571,6 @@ async function main(task: string) {
 // RUN TASK
 // ============================================================
 
-main("Commit and push changes from source control.");
+main(
+  "Commit and push changes from source control. Use the dropdown arrow and do comit and push all changes.",
+);
