@@ -340,77 +340,6 @@ Check the current state and determine whether the task is complete.
           // Generate keywords
           // --------------------------------------------------
 
-          console.log("[operate] Asking Gemini for relevant UI keywords...");
-
-          const keywordResult = await generateText({
-            model: geminiModel,
-
-            instructions: `
-You are a desktop UI automation assistant.
-
-Determine the next UI element needed to advance the user's task.
-
-Return a short list of useful keywords that match elements
-in the provided application UI tree.
-
-Prefer exact visible labels.
-Do not invent elements.
-Return keywords for the next action only.
-
-Application: ${appName}
-`,
-
-            prompt: `
-Overall task: ${task}
-
-`,
-
-            output: Output.object({
-              schema: z.object({
-                keywords: z.array(z.string()),
-              }),
-            }),
-          });
-
-          logUsage("operate: keyword selection", keywordResult.usage);
-
-          const keywords = keywordResult.output.keywords;
-
-          console.log("[operate] Keywords:", keywords);
-
-          // --------------------------------------------------
-          // Search tree
-          // --------------------------------------------------
-
-          console.log("[operate] Searching UI tree for matching elements...");
-
-          const searchedElements = findElementInTree(
-            tree.formatted as string,
-            keywords,
-          );
-
-          console.log(
-            "[operate] Matching elements:",
-            JSON.stringify(searchedElements, null, 2),
-          );
-
-          if (
-            !searchedElements ||
-            (Array.isArray(searchedElements) && searchedElements.length === 0)
-          ) {
-            throw new Error(
-              "No matching UI elements found in the current UI tree.",
-            );
-          }
-
-          // --------------------------------------------------
-          // Select element
-          // --------------------------------------------------
-
-          console.log(
-            "[operate] Asking Gemini to select the target element...",
-          );
-
           const selectionResult = await generateText({
             model: geminiModel,
 
@@ -422,6 +351,8 @@ Return the exact role and exact name as they appear in the UI tree.
 Do not invent, rename, or normalize element names.
 Return the role in PascalCase.
 
+If action type is typeText others remain undefeined and don't return. No click required before typing.
+
 Application: ${appName}
 `,
 
@@ -429,7 +360,7 @@ Application: ${appName}
 Overall task: ${task}
 
 Matching elements:
-${JSON.stringify(searchedElements)}
+${tree.formatted}
 
 Select the element that should be acted upon next.
 `,
@@ -623,4 +554,6 @@ async function main(task: string) {
 // RUN TASK
 // ============================================================
 
-main("Click manage, themes, color theme, solarized light.");
+main(
+  "Go to extensions. Search for thunder client. open its list menu and uninstall it",
+);
