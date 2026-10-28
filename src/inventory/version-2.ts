@@ -117,6 +117,7 @@ const vangrexAgent = new ToolLoopAgent({
   instructions: `
 You are Vangrex, a desktop automation agent responsible for completing user tasks.
 
+
 WORKFLOW:
 
 1. INITIAL INSPECTION
@@ -445,6 +446,18 @@ Select the element that should be acted upon next.
                         doubleClick: z.boolean(),
                       })
                       .optional(),
+                    dragElement: z
+                      .object({
+                        destinationName: z.string(),
+                        destinationRole: z.string(),
+                      })
+                      .optional(),
+                    typeText: z
+                      .object({
+                        clearTextBeforeTyping: z.boolean(),
+                        text: z.string(),
+                      })
+                      .optional(),
                   }),
                 }),
               }),
@@ -454,6 +467,8 @@ Select the element that should be acted upon next.
           logUsage("operate: element selection", selectionResult.usage);
 
           const selectedElement = selectionResult.output.selectedElement;
+
+          const action = selectionResult.output.selectedElement.action;
 
           console.log(
             "[operate] Selected element:",
@@ -508,6 +523,43 @@ Select the element that should be acted upon next.
             );
 
             console.log("[operate] Click command executed.");
+          } else if (action.dragElement) {
+            const destinationSelector = `role:${action.dragElement.destinationRole}|name:${action.dragElement.destinationName}`;
+
+            const destinationElement = await app
+              .locator(destinationSelector)
+              .first(2000);
+
+            const destinationBounds = destinationElement.bounds();
+
+            const centerDestinationX = Math.round(
+              destinationBounds.x + destinationBounds.width / 2,
+            );
+            const centerDestinationY = Math.round(
+              destinationBounds.y + destinationBounds.height / 2,
+            );
+
+            robot.moveMouseSmooth(targetX, targetY);
+
+            element.mouseClickAndHold(targetX, targetY);
+
+            robot.moveMouseSmooth(centerDestinationX, centerDestinationY);
+
+            element.mouseRelease();
+          } else if (action.typeText) {
+            const bounds = element.bounds();
+
+            console.log("[operate] Element bounds:", bounds);
+
+            const targetX = Math.round(bounds.x + bounds.width / 2);
+
+            const targetY = Math.round(bounds.y + bounds.height / 2);
+
+            robot.moveMouseSmooth(targetX, targetY);
+
+            robot.mouseClick();
+
+            robot.typeStringDelayed(action.typeText.text, 500);
           }
 
           logSection("operate END");
@@ -571,6 +623,4 @@ async function main(task: string) {
 // RUN TASK
 // ============================================================
 
-main(
-  "Commit and push changes from source control. Use the dropdown arrow and do comit and push all changes.",
-);
+main("Click manage, themes, color theme, solarized light.");
