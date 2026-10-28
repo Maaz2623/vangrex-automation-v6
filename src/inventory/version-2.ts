@@ -163,76 +163,43 @@ STRICT RULES:
 
     inspectUi: tool({
       description:
-        "Inspect the current application UI with a screenshot. Use before starting a task and after performing operations to verify completion.",
+        "Verify whether the user's task has been completed by examining the current application UI and screenshot. Call after performing operations to verify completion. Do not select UI elements.",
 
       inputSchema: z.object({
-        task: z.string().describe("The overall task to perform."),
+        task: z.string().describe("The overall task to verify."),
       }),
 
       execute: async ({ task }) => {
         logSection("inspectUi START");
 
-        console.log("[inspectUi] Task:", task);
+        console.log("[inspectUi] Verifying task completion:", task);
 
         try {
-          // --------------------------------------------------
           // Get current application
-          // --------------------------------------------------
-
-          console.log("[inspectUi] Getting current application...");
-
           const app = await desktop.getCurrentApplication();
           const appName = app.processName();
 
           console.log("[inspectUi] Application:", appName);
 
-          // --------------------------------------------------
           // Capture UI tree and screenshot
-          // --------------------------------------------------
-
-          console.log("[inspectUi] Extracting UI tree and screenshot...");
-
           const tree = desktop.getWindowTreeResult(appName, undefined, {
             propertyMode: Terminator.PropertyLoadingMode.Complete,
-
             formatOutput: true,
-
             treeOutputFormat: Terminator.TreeOutputFormat.ClusteredYaml,
-
             includeMonitorScreenshots: false,
             includeWindowScreenshot: true,
           });
 
-          console.log("[inspectUi] UI tree extracted.");
-
-          console.log("[inspectUi] Tree length:", tree.formatted?.length ?? 0);
-
           console.log(
-            "[inspectUi] Screenshot path:",
-            tree.windowScreenshotPath,
+            "[inspectUi] UI tree length:",
+            tree.formatted?.length ?? 0,
           );
 
-          // --------------------------------------------------
           // Save screenshot
-          // --------------------------------------------------
-
           saveScreenshot(tree.windowScreenshotPath as string);
 
-          // --------------------------------------------------
           // Upload screenshot
-          // --------------------------------------------------
-
-          console.log("[inspectUi] Reading screenshot...");
-
           const screenshotData = fs.readFileSync("screenshots/screenshot.png");
-
-          console.log(
-            "[inspectUi] Screenshot size:",
-            screenshotData.length,
-            "bytes",
-          );
-
-          console.log("[inspectUi] Uploading screenshot...");
 
           const { providerReference } = await uploadFile({
             api: google.files(),
@@ -242,24 +209,25 @@ STRICT RULES:
 
           console.log("[inspectUi] Screenshot uploaded.");
 
-          // --------------------------------------------------
-          // Generate search keywords
-          // --------------------------------------------------
-
-          console.log("[inspectUi] Asking Gemini for relevant UI keywords...");
-
-          const keywordResult = await generateText({
+          // Verify completion directly
+          const result = await generateText({
             model: geminiModel,
 
             instructions: `
-You are a desktop UI analysis assistant.
+You are a desktop UI task verification assistant.
 
-Determine useful UI element keywords for the next action
-needed to accomplish the user's task.
+Determine whether the user's task has already been completed.
 
-Return a short list of relevant keywords.
-Prefer exact visible labels from the application.
-Do not invent elements that are not visible.
+Use the screenshot and UI tree as evidence.
+
+Rules:
+- Return completed=true only when the visible UI provides sufficient evidence that the task is complete.
+- Return completed=false if the task is incomplete, still in progress, or cannot be verified.
+- Do not suggest actions.
+- Do not select UI elements.
+- Do not assume an action succeeded merely because it was requested.
+- Keep the message short and specific.
+- If the evidence is insufficient, explain that completion could not be verified.
 
 Application: ${appName}
 `,
@@ -267,91 +235,17 @@ Application: ${appName}
             messages: [
               {
                 role: "user",
-
                 content: [
                   {
                     type: "text",
-                    text: `Task: ${task}`,
-                  },
-
-                  {
-                    type: "file",
-                    mediaType: "image/png",
-                    data: providerReference,
-                  },
-                ],
-              },
-            ],
-
-            output: Output.object({
-              schema: z.object({
-                keywords: z.array(z.string()),
-              }),
-            }),
-          });
-
-          logUsage("inspectUi: keyword selection", keywordResult.usage);
-
-          const keywords = keywordResult.output.keywords;
-
-          console.log("[inspectUi] Keywords:", keywords);
-
-          // --------------------------------------------------
-          // Search UI tree
-          // --------------------------------------------------
-
-          console.log("[inspectUi] Searching UI tree for matching elements...");
-
-          const searchedElements = findElementInTree(
-            tree.formatted as string,
-            keywords,
-          );
-
-          console.log(
-            "[inspectUi] Matching elements:",
-            JSON.stringify(searchedElements, null, 2),
-          );
-
-          // --------------------------------------------------
-          // Select element
-          // --------------------------------------------------
-
-          console.log("[inspectUi] Asking Gemini to select an element...");
-
-          const selectionResult = await generateText({
-            model: geminiModel,
-
-            instructions: `
-Select the most appropriate UI element for the user's task.
-
-Choose an element from the provided matching elements.
-Return its exact role and exact name.
-Do not invent or modify either value.
-Return the role in PascalCase.
-
-Use the screenshot to resolve ambiguity when necessary.
-
-Application: ${appName}
-`,
-
-            messages: [
-              {
-                role: "user",
-
-                content: [
-                  {
-                    type: "text",
-
                     text: `
-Task: ${task}
+Task to verify:
+${task}
 
-Matching elements:
-${JSON.stringify(searchedElements)}
 
-Select the element that should be acted upon next.
+Check the current state and determine whether the task is complete.
 `,
                   },
-
                   {
                     type: "file",
                     mediaType: "image/png",
@@ -363,27 +257,22 @@ Select the element that should be acted upon next.
 
             output: Output.object({
               schema: z.object({
-                selectedElement: z.object({
-                  role: z.string(),
-                  name: z.string(),
-                }),
+                completed: z.boolean(),
+                message: z.string(),
               }),
             }),
           });
 
-          logUsage("inspectUi: element selection", selectionResult.usage);
+          logUsage("inspectUi: completion verification", result.usage);
 
-          const selectedElement = selectionResult.output.selectedElement;
-
-          console.log(
-            "[inspectUi] Selected element:",
-            JSON.stringify(selectedElement, null, 2),
-          );
+          console.log("[inspectUi] Completed:", result.output.completed);
+          console.log("[inspectUi] Message:", result.output.message);
 
           logSection("inspectUi END");
 
           return {
-            selected_element: selectedElement,
+            completed: result.output.completed,
+            message: result.output.message,
           };
         } catch (error) {
           logError("inspectUi failed", error);
@@ -473,8 +362,6 @@ Application: ${appName}
             prompt: `
 Overall task: ${task}
 
-Current application UI tree:
-${tree.formatted}
 `,
 
             output: Output.object({
@@ -551,6 +438,14 @@ Select the element that should be acted upon next.
                 selectedElement: z.object({
                   role: z.string(),
                   name: z.string(),
+                  action: z.object({
+                    click: z
+                      .object({
+                        clickType: z.enum(["left", "right"]),
+                        doubleClick: z.boolean(),
+                      })
+                      .optional(),
+                  }),
                 }),
               }),
             }),
@@ -602,13 +497,18 @@ Select the element that should be acted upon next.
 
           console.log("[operate] Moving mouse...");
 
-          robot.moveMouseSmooth(targetX, targetY);
+          if (selectionResult.output.selectedElement.action.click) {
+            robot.moveMouseSmooth(targetX, targetY);
 
-          console.log("[operate] Clicking target...");
+            console.log("[operate] Clicking target...");
 
-          robot.mouseClick();
+            robot.mouseClick(
+              selectionResult.output.selectedElement.action.click.clickType,
+              selectionResult.output.selectedElement.action.click.doubleClick,
+            );
 
-          console.log("[operate] Click command executed.");
+            console.log("[operate] Click command executed.");
+          }
 
           logSection("operate END");
 
@@ -616,10 +516,6 @@ Select the element that should be acted upon next.
             success: true,
             action: "click",
             selected_element: selectedElement,
-            coordinates: {
-              x: targetX,
-              y: targetY,
-            },
             message: `Clicked ${selectedElement.name}. Continue with the overall task if more actions are required.`,
           };
         } catch (error) {
@@ -675,4 +571,4 @@ async function main(task: string) {
 // RUN TASK
 // ============================================================
 
-main("Click on manage then themes.");
+main("Right click inside file explorer tree.");
