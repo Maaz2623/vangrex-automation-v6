@@ -571,4 +571,4 @@ async function main(task: string) {
 // RUN TASK
 // ============================================================
 
-main("Right click inside file explorer tree.");
+main("Commit and push changes from source control.");
